@@ -1288,7 +1288,7 @@ class FortranCodeUnit(FortranContainer):
             tmplst = []
             for call in self.calls:
                 # get the item of the call
-                item = self._find_chain_item(call)
+                item = self._find_chain_item(call, project)
 
                 # failed to find item, give up and add call's string name to the list
                 if item is None:
@@ -1452,7 +1452,7 @@ class FortranCodeUnit(FortranContainer):
             obj.visible = True
             obj.prune()
 
-    def _find_chain_item(self, call_chain: List[str]) -> Optional[FortranBase]:
+    def _find_chain_item(self, call_chain: List[str], project) -> Optional[FortranBase]:
         """
         Traverse the call_chain to discover the item at the end of the chain.
         This is done by looking at the first label in the call chain and matching it to
@@ -1471,7 +1471,7 @@ class FortranCodeUnit(FortranContainer):
             r = re.match(r"^(type|class)\((.*?)(?:\(.*\))?\)$", s, re.IGNORECASE)
             return r.group(2).lower() if r else s.lower()
 
-        def get_label_item(context, label):
+        def get_label_item(context, project, label):
             """
             Return the item at label in the context, or None if it doesn't exist
             """
@@ -1483,6 +1483,13 @@ class FortranCodeUnit(FortranContainer):
             labels.update(
                 {bp.name.lower(): bp for bp in getattr(context, "boundprocs", [])}
             )
+            # Extra procedures AVe, gotten from project
+            listProcedures = project.procedures
+            dictProcedures = {index: value for index, value in enumerate(listProcedures)}
+            finalDictProcedures = {}
+            for x in dictProcedures:
+                finalDictProcedures[dictProcedures[x].ident] = dictProcedures[x]
+            labels.update(finalDictProcedures)
             # types
             labels.update(getattr(context, "all_types", {}))
             # extended type
@@ -1505,7 +1512,7 @@ class FortranCodeUnit(FortranContainer):
 
         context: Optional[FortranBase] = self
         for call in call_chain[:-1]:
-            item = get_label_item(context, call)
+            item = get_label_item(context, project, call)
 
             # Find the context returned by the item
             if item is None:
@@ -1528,7 +1535,7 @@ class FortranCodeUnit(FortranContainer):
                 return None
 
         # return the item for the last label in the chain
-        return get_label_item(context, call_chain[-1])
+        return get_label_item(context, project, call_chain[-1])
 
 
 class FortranSourceFile(FortranContainer):
